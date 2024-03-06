@@ -1,0 +1,3 @@
+library(maftools)
+#PRIMARY PROGRESSIVE FINAL MAF-READ
+LC_primary_progressive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/PROGRESSIVE_DNA_PRIMARY/final_maf_progressive.maf.gz",verbose = TRUE,rmFlags = TRUE)
