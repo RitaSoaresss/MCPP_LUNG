@@ -1,0 +1,19 @@
+library(maftools)
+
+# Get a list of all the MAF files in the directory
+maf_files <- list.files(pattern=".maf$", full.names=TRUE)
+
+# Loop over each MAF file
+for (maf_file in maf_files) {
+  # Read the MAF file
+  maf <- read.maf(maf_file)
+  
+  # Filter out rows where genes have no dbSNP_RS ID 
+  maf_filtered <- maf@data[maf@data$dbSNP_RS != "",]
+  
+  # Extract file name without the ".maf"
+  file_name <- tools::file_path_sans_ext(basename(maf_file))
+  
+  # Write each filtered MAF:
+  write.table(maf_filtered, paste0(file_name, "_filtered.maf"), sep="\t", quote=FALSE, row.names=FALSE)
+}
