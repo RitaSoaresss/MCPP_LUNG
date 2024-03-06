@@ -21,7 +21,8 @@ names(vc_cols) = c(
   'In_Frame_Del'
 )
 
-#Co
+#Plot the coOncoplot, comparing the correlated mutations from the gene list obtain from the pearson correlation analysis (final_genes_cor):
 coOncoplot(m1 = LC_primary_progressive,m2 = LC_primary_non_progresive,m1Name = "PROGRESSIVE",m2Name = "NON-PROGRESSIVE",genes = final_genes_cor,colors = vc_cols)
 
+#Plot the mutations occuring in the only gene with a negative pearson correlation in the progressive vs non-progressive samples:
 lollipopPlot2(m1 = LC_primary_progressive, m2 = LC_primary_non_progresive, gene = "ZNF57",m1_name = "Progressive", m2_name = "Non-Progressive")
