@@ -1,3 +1,27 @@
+################################################################LOAD PROGRESSIVE SAMPLES###################################################################################################################################
 library(maftools)
 #PRIMARY PROGRESSIVE FINAL MAF-READ
 LC_primary_progressive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/PROGRESSIVE_DNA_PRIMARY/final_maf_progressive.maf.gz",verbose = TRUE,rmFlags = TRUE)
+
+################################################################LOAD NON-PROGRESSIVE SAMPLES###################################################################################################################################
+#PRIMARY NON-PROGRESSIVE FINAL MAF-READ
+LC_primary_non_progresive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/NON_PROGRESSIVE_DNA_PRIMARY/final_maf_non_progressive.maf.gz",verbose = TRUE,rmFlags = TRUE)
+
+################################################################PROGRESSIVE VS NON-PROGRESSIVE SAMPLES###################################################################################################################################
+#oncoplot colors:
+vc_cols = RColorBrewer::brewer.pal(n = 8, name = 'Paired')
+names(vc_cols) = c(
+  'Frame_Shift_Del',
+  'Missense_Mutation',
+  'Nonsense_Mutation',
+  'Multi_Hit',
+  'Frame_Shift_Ins',
+  'In_Frame_Ins',
+  'Splice_Site',
+  'In_Frame_Del'
+)
+
+#Co
+coOncoplot(m1 = LC_primary_progressive,m2 = LC_primary_non_progresive,m1Name = "PROGRESSIVE",m2Name = "NON-PROGRESSIVE",genes = final_genes_cor,colors = vc_cols)
+
+lollipopPlot2(m1 = LC_primary_progressive, m2 = LC_primary_non_progresive, gene = "ZNF57",m1_name = "Progressive", m2_name = "Non-Progressive")
