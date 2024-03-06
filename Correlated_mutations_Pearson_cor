@@ -1,0 +1,140 @@
+#Given that the number of genes in non_progressive samples and progressive samples are different:
+
+#Obtain the gene names from the non_progressive samples:
+genes_ <- LC_primary_non_progresive@gene.summary$Hugo_Symbol
+genes_
+
+#Obtain the gene names from the progressive samples:
+genes_progressive <- LC_primary_progressive@gene.summary$Hugo_Symbol
+genes_progressive
+F_test_progressive <- vector("list", length = length(genes_progressive))
+
+#Intersect the gene names from non_progressive samples and progressive samples:
+L <- intersect(genes_, genes_progressive)
+
+#Create a new_variable to store all the genes that aren't intersected:
+A <- c()
+
+library(dplyr)
+
+for (i in genes_progressive) {
+  if (!(i %in% L)) {
+    A <- c(A, i)
+  }
+}
+
+#obtain all the unique gene names from non_progressive and progressive samples:
+new_genes <- c(genes_, A)
+
+#Obtain the list of the non_progressive samples mutated for each gene:
+LC_NP <- LC_primary_non_progresive@gene.summary[, 12]
+LC_NP <- as.data.frame(LC_NP)
+row.names(LC_NP) <- genes_
+
+#Obtain the list of the progressive samples mutated for each gene:
+LC_P <- LC_primary_progressive@gene.summary[, 12]
+LC_P <- as.data.frame(LC_P)
+row.names(LC_P) <- genes_progressive
+
+#list with all the genes
+df_person_genes <- vector("list", length = length(new_genes))
+names(df_person_genes) <- new_genes
+
+#create the contingency table
+for (i in new_genes) {
+  v <- c()
+  x <- c()
+  ifelse((i %in% row.names(LC_NP)), v <- LC_NP[i, ], v <- 0)
+  ifelse((i %in% row.names(LC_P)), x <- LC_P[i, ], x <- 0)
+  a <- c()
+  b <- c()
+  if (v > 0) {
+    for (j in 1:v) {  
+      NP <- 0
+      Mut <- 1
+      a <- c(a, NP)
+      b <- c(b, Mut)
+    }
+  }
+  df_mut_NP <- cbind(a, b)
+  c <- c()
+  d <- c()
+  if (x > 0) {
+    for (k in 1:x) {  
+      P <- 1
+      Mut <- 1
+      c <- c(c, P)
+      d <- c(d, Mut)
+    }
+  }
+  df_mut_P <- cbind(c, d)
+  e <- c()
+  f <- c()
+  if (18 - v > 0) {
+    for (l in 1:(18 - v)) {  
+      NP <- 0
+      WT <- 0
+      e <- c(e, NP)
+      f <- c(f, WT)
+    }
+  }
+  df_wt_NP <- cbind(e, f)
+  g <- c()
+  h <- c()
+  if (7 - x > 0) {
+    for (m in 1:(7 - x)) {  
+      P <- 1
+      WT <- 0
+      g <- c(g, P)
+      h <- c(h, WT)
+    }
+  }
+  
+  df_wt_P <- cbind(g, h)
+  df_final <- rbind(df_mut_P, df_mut_NP, df_wt_NP, df_wt_P)
+  colnames(df_final) <- c("RESPONSE", "STATE")
+  df_person_genes[[i]] <- df_final
+  
+}
+
+pearson_test_all <- vector("list", length = length(df_person_genes))
+names(pearson_test_all) <- names(df_person_genes)
+genes_sign_f <- c()
+pValue_f <- c()
+
+#Calculate the Pearson correlation:
+for (i in 1:length(df_person_genes)) {
+  df <- as.data.frame(df_person_genes[[i]])
+  # Check if standard deviation of either variable is zero
+  if (sd(df$RESPONSE) == 0 || sd(df$STATE) == 0) {
+    # Skip correlation test and assign NA values
+    test <- list(p.value = NA, estimate = NA)
+  } else {
+    # Perform correlation test
+    test <- cor.test(df$RESPONSE, df$STATE, method = "pearson")
+  }
+  pearson_test_all[[i]] <- test
+  if (!is.na(test$p.value) && test$p.value <= 0.05) {
+    genes_sign_f <- c(genes_sign_f, names(pearson_test_all)[i])
+    pValue_f <- c(pValue_f, test$p.value)
+    cor_value<- c(cor_value, test$estimate)
+  }
+}
+
+#Obtain the final Pearson correlation table with the pValue_f, p_value_adjust and cor_value (pearsons correlation for each gene):
+p_value_adjust<-p.adjust(pValue_f)
+ft <- cbind(genes_sign_f, pValue_f,p_value_adjust,cor_value)
+ft<-as.data.frame(ft)
+
+#Subset that table to only the gene names with associations with a p_value_adjust<1:
+ft_<-ft[ft$p_value_adjust<1,]
+View(ft_)
+
+#Obtain the list of genes, to plot with co-oncoplot function, the correlated mutations on those genes comparing in the progressive samples vs the non-progressive samples:
+names_genes_cor<-ft_$genes_sign_f
+final_genes_cor<-unique(names_genes_cor)
+
+#Go to step number. oncoplot in file DNA_ANALYSIS_MAF_TOOLS_PROGRESSIVE_VS_NON_PROGRESSIVE
+
+# Print out or assign the results to a variable
+print(ft)
