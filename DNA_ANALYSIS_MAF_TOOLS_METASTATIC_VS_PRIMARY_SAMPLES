@@ -1,0 +1,143 @@
+################################################################LOAD METASTATIC SAMPLES###################################################################################################################################
+library(maftools)
+
+read.maf(verbose = TRUE, rmFlags=TRUE)
+
+LC_metastases<- maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_METASTASES/final_maf_metastases.maf.gz",verbose = TRUE,rmFlags = TRUE)
+
+#summary plot
+plotmafSummary(maf = LC_metastases, rmOutlier = TRUE, addStat = 'median', dashboard = TRUE, titvRaw = FALSE,showBarcodes = TRUE)
+
+#plot titv summary
+LC_metastases.titv = titv(maf = LC_metastases, plot = FALSE, useSyn = TRUE)
+plotTiTv(res = LC_metastases.titv)
+
+#lollipop plot for , which is one of the most frequent mutated genes in this 5 lung cancer samples
+#1º MUC16
+AKT1_GENE<-lollipopPlot(
+  maf = LC_metastases,
+  gene = 'AKT1',
+  AACol = 'Protein_Change',showDomainLabel = TRUE,labelPos = "all",repel = TRUE)
+
+#plot the somatic interactions plot
+somaticInteractions(maf = LC_metastases, top = 10, pvalue = c(0.05, 0.1))
+
+laml.sig = oncodrive(maf = LC_metastases, AACol = 'Protein_Change', minMut = 5, pvalMethod = 'zscore')
+
+vc_cols = RColorBrewer::brewer.pal(n = 8, name = 'Paired')
+names(vc_cols) = c(
+  'Frame_Shift_Del',
+  'Missense_Mutation',
+  'Nonsense_Mutation',
+  'Multi_Hit',
+  'Frame_Shift_Ins',
+  'In_Frame_Ins',
+  'Splice_Site',
+  'In_Frame_Del'
+)
+pdf("output_oncoplot.pdf", width = 16, height = 20)
+par(mar = c(5, 10, 4, 4))
+oncoplot(maf = LC_metastases,showTumorSampleBarcodes=TRUE,fontSize = 0.7,colors = vc_cols, top = 100)
+dev.off()
+
+#oncogenic pathways more affected:
+par(mar = c(10, 10, 8, 4))
+oncogenic_pathways<-oncoplot(maf = LC_metastases, pathways = "sigpw", gene_mar = 8,fontSize = 0.8,topPathways = 3,showTumorSampleBarcodes = TRUE,colors = vc_cols)
+
+#Biological processes of known drivers:
+par(mar = c(10, 10, 8, 4))
+smgbp_metastases<-oncoplot(maf = LC_metastases, pathways = "smgbp", gene_mar = 8, fontSize = 0.6, topPathways = 6,showTumorSampleBarcodes = TRUE,colors = vc_cols)
+par(mar = c(5, 8, 4, 4))
+#collapsing the oncogenic pathways:
+sigpw_metastases<-oncoplot(maf = LC_metastases, pathways = "sigpw", gene_mar = 8, fontSize = 0.3, topPathways = 10,showTumorSampleBarcodes = TRUE,colors = vc_cols,collapsePathway = TRUE)
+
+library(gridExtra)
+combined_plot <- grid.arrange(smgbp_metastases,sigpw_metastases, ncol = 2)
+
+#collapsing the Biological processes of known drivers:
+oncoplot(maf = LC_metastases, pathways = "smgbp", gene_mar = 8, fontSize = 0.3, topPathways = 10,showTumorSampleBarcodes = TRUE,colors = vc_cols,collapsePathway = TRUE)
+
+
+#do the tmb plot
+tmb(LC_metastases)
+
+library(OncodriveCLUSTL)
+
+#SEE ONCODRIVERS-CAN'T 9.2
+laml.sig = oncodrive(maf = LC_metastases, AACol = NULL, minMut = 5, pvalMethod = 'zscore')
+LC_metastases.sig = oncodrive(maf = LC_metastases, AACol = 'Protein_Change', minMut = 5, pvalMethod = 'zscore',ignoreGenes = TRUE)
+LC_metastases.pfam = pfamDomains(maf = LC_metastases, AACol = 'Protein_Change', top = 10)
+LC_metastases.pfam$proteinSummary[,1:7, with = FALSE]
+LC_metastases.pfam$domainSummary[,1:3, with = FALSE]
+par(mar = c(10, 10, 8, 4))
+LC_metastases.pfam
+
+#Oncogenic Signaling Pathways
+pws = pathways(maf = LC_metastases, plotType = 'treemap')
+
+library("BSgenome.Hsapiens.UCSC.hg38", quietly = TRUE)
+
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg38")
+
+################################Mutational Signatures###################################
+#1ºStep:obtain the adjacent bases surrounding the mutated base and form a mutation matrix
+
+LC_metastases.tnm = trinucleotideMatrix(maf = LC_metastases, add = TRUE, ref_genome = "BSgenome.Hsapiens.UCSC.hg38")
+View(LC_metastases.tnm)
+
+#2ºSTEP:APOBEC Enrichment estimation
+plotApobecDiff(tnm = LC_metastases.tnm, maf = LC_metastases, pVal = 0.2)#None of the samples are enriched for APOBEC. Nothing to plot.
+plotApobecDiff(tnm = LC_metastases.tnm, maf = LC_metastases, pVal = 0.05)#None of the samples are enriched for APOBEC. Nothing to plot.
+
+#3ºSTEP:Draw elbow plot to visualize and decide optimal number of signatures
+library('NMF')
+LC_metastases.sign = estimateSignatures(mat = LC_metastases.tnm, nTry = 5)#the optimal number of signatures is 5.
+LC_metastases.sig = extractSignatures(mat = LC_metastases.tnm, n = 2)
+View(LC_metastases.sig)
+
+
+#4ºSTEP:Compare detected signatures to COSMIC Legacy or SBS signature database.
+#4ºSTEP-A:COSMIC Legacy-Compate against original 30 signatures 
+LC_metastases.og30.cosm = compareSignatures(nmfRes = LC_metastases.sig, sig_db = "legacy")
+
+#4ºSTEP-B:SBS signature database-Compate against updated version3 60 signatures 
+LC_metastases.v3.cosm = compareSignatures(nmfRes = LC_metastases.sig, sig_db = "SBS")
+
+#comparison of similarities of detected signatures against validated signatures
+library('pheatmap')
+pheatmap::pheatmap(mat = LC_metastases.og30.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Validated Signatures-COSMIC Legacy")
+maftools::plotSignatures(nmfRes = LC_metastases.sig, title_size = 1.2, font_size = 1,sig_db = "legacy",show_title = TRUE)
+
+pheatmap::pheatmap(mat = LC_metastases.v3.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Validated Signatures-SBS")
+maftools::plotSignatures(nmfRes = LC_metastases.sig, title_size = 1.2,font_size = 1,sig_db = "SBS",show_barcodes = TRUE)
+
+#5ºSTEP:Display mutational signatures exposure in each sample
+plotSignatures(nmfRes = LC_metastases.sig,
+               title_size = 0.8,
+               contributions = TRUE,
+               show_title = TRUE,sig_db = "legacy")
+
+plotSignatures(nmfRes = LC_metastases.sig,
+               title_size = 0.8,
+               contributions = TRUE,
+               show_title = TRUE,show_barcodes = TRUE)
+
+#6ºSTEP:Enrichment analysis
+LC_metastases.se = signatureEnrichment(maf = LC_metastases, 
+                              sig_res = LC_metastases.sig,minMut = 1, useCNV = FALSE, fn = NULL)
+
+#7ºSTEP:Genes mutated in samples with particular mutational signature
+LC_metastases.se$groupwise_comparision[1:2, ]
+
+
+
+#8ºSTEP:Plot the information in step 7:
+plotEnrichmentResults(enrich_res = LC_metastases.se,pVal = 1,ORthr = 0)
+
+
+################################################################LOAD PRIMARY SAMPLES###################################################################################################################################
+
+
+################################################################ANALYSIS METASTATIC VS PRIMARY ###################################################################################################################################
+
+
