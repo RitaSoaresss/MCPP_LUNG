@@ -101,6 +101,7 @@ pearson_test_all <- vector("list", length = length(df_person_genes))
 names(pearson_test_all) <- names(df_person_genes)
 genes_sign_f <- c()
 pValue_f <- c()
+cor_value <-c()
 
 #Calculate the Pearson correlation:
 for (i in 1:length(df_person_genes)) {
