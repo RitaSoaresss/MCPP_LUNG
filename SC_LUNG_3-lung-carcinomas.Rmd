@@ -1,0 +1,962 @@
+---
+title: "sc_lung_3 lung carcinomas"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-05-23"
+---
+
+#BIG NOTE:
+#ALL THE GENES ARE IN ENSEMBL NOMENCLATURE, EXCEPT THE MITOCONDRIAL GENES
+#THOSE ARE IN THE GENE SYMBOLS NOMENCLATURE
+
+#libraries
+```{r}
+library(Seurat)
+library(SeuratData)
+library(gridExtra)
+library(tidyverse)
+library(data.table)
+library(SingleCellExperiment)
+library(scds)
+library(useful)
+library(ggplot2)
+
+install.packages("Seurat")
+install.packages("org.Hs.eg.db")
+library(Seurat)
+library(org.Hs.eg.db)
+```
+
+#DETERMINE THE DIRECTORY:
+```{r}
+knitr::opts_knit$set(root.dir = "C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/")
+
+```
+
+
+#load the data:
+https://www.ebi.ac.uk/gxa/sc/experiments/E-MTAB-6653/downloads 
+#1º:Load the cells
+```{r}
+library(readr)
+mtx_cols <- read.table("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/barcodes.mtx_cols", header = FALSE, sep = "\t")
+View(mtx_cols)
+
+barcodes<-mtx_cols$V1
+barcodes<-as.data.frame(barcodes,header=FALSE,rownames = FALSE)
+file_path_<- file.path("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/", "barcodes.tsv.gz")
+write.table(barcodes,file_path_,sep="\t",quote = FALSE,row.names = FALSE,col.names = FALSE)
+View(barcodes)
+```
+
+#2º:Load the genes, convert into tsv and compress into .gz
+```{r}
+mtx_rows <- read.table("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/features.mtx_rows", header = FALSE, sep = "\t")
+mtx_rows<-as.data.frame(mtx_rows$V1)
+View(mtx_rows)
+
+genes<-mtx_rows$`mtx_rows$V1`
+genes<-as.data.frame(genes,header=FALSE,rownames = FALSE)
+file_path <- file.path("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/", "features.tsv.gz")
+write.table(genes,file_path,sep="\t",quote = FALSE,row.names = FALSE,col.names = FALSE)
+View(genes)
+```
+
+#3º:TRY TO CONVERT THE ENSEMBL GENES INTO GENE SYMBOL AND DETERMINE THE MITOCONDRIAL GENES:
+```{r}
+#installations missing:
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("biomaRt")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("org.Hs.eg.db")
+library(ggplot2)
+library(Matrix)
+library(Seurat)
+library(patchwork)
+library(dplyr)
+library(biomaRt)
+library(org.Hs.eg.db)
+
+#input list of the genes in the genes.tsv:
+data_genes<-genes$genes
+
+#BiomaRt method:
+listEnsembl()
+ensembl_<-useEnsembl(biomart = "genes")
+datasets<-listDatasets(ensembl_)
+ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+attr<-listAttributes(ensembl)#here we define the reference to which type of conversion type we want to convert the ensembl genes
+bm <- getBM(attributes=c("ensembl_gene_id", "external_gene_name"), values=data_genes, mart=ensembl)
+
+# Check mitochondrial genes before conversion
+print("Mitochondrial genes before conversion:")
+print(grep("^MT-", data_genes, value = TRUE))#NO MITOCONDRIAL GENES BEFORE CONVERSION
+
+#DETERMINE THE GENE SYMBOLS:
+gene.symbols <- bm$external_gene_name[match(data_genes, bm$ensembl_gene_id)]
+features_<-as.matrix(cbind(genes$genes,gene.symbols))
+colnames(features_)<-c("ensembl_genes","gene_symbols")
+
+#CREATE A NEW DATAFRAME WITH ENSEMBL GENES AND THE MITOCONDRIAL GENES IN GENE.SYMBOLS:
+features<-as.data.frame(features_)
+MT_GENES<-print(grep("^MT-",features_, value = TRUE))#13 MITOCONDRIAL GENES AFTER CONVERSION
+MT_GENES<-as.list(MT_GENES)
+features<- features[match(features$gene_symbols, MT_GENES, nomatch = 0) != 0,]
+
+#CREATE THE FINAL FEATURES DATAFRAME:
+features_df<-as.data.frame(features_)
+#DO ONE BY ONE:
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198695"]<-"MT-ND6"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198712"]<-"MT-CO2"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198727"]<-"MT-CYB"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198763"]<-"MT-ND2"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198786"]<-"MT-ND5"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198804"]<-"MT-CO1"#
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198840"]<-"MT-ND3"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198886"]<-"MT-ND4"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198888"]<-"MT-ND1"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198899"]<-"MT-ATP6"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000198938"]<-"MT-CO3"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000212907"]<-"MT-ND4L"
+features_df$ensembl_genes[features_df$ensembl_genes=="ENSG00000228253"]<-"MT-ATP8"
+
+
+View(features_df)
+#CREATE THE TSV FILE WITH GENES CALLED FEATURES.TSV
+file_path <- file.path("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/", "features.tsv.gz")
+write.table(features_df,file_path,sep="\t",quote = FALSE,row.names = FALSE,col.names = FALSE)
+#1823 genes-not converted.gz
+#22156 genes from the 23979 were actually converted
+
+mtx_matrix<- read.table("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/matrix.mtx", header = FALSE, sep = "\t")
+mtx_rows<-as.data.frame(mtx_rows$V1)
+View(mtx_matrix)
+file_path <- file.path("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/", "matrix.mtx.gz")
+write.table(mtx_matrix,file_path,sep="\t",quote = FALSE,row.names = FALSE,col.names = FALSE)
+
+```
+
+
+#4º:ALL THE DATASET IN THE ACCORDING FORMATS ACCEPTED BY THE FUNCTION READ10X
+```{r}
+#gene.column = 1
+lung.data <- Read10X(data.dir ="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/")
+                     #,gene.column = 2,unique.features=TRUE)#try to change the genes here in the original data 23,979
+
+feature_names <- rownames(lung.data)
+
+# Identify features to keep (those without a dot followed by numbers)
+features_to_keep <- !grepl("\\.\\d+", feature_names)
+
+# Subset the Seurat object
+lung_filtered <- lung.data[features_to_keep,]
+
+#in the case, of gene names
+lung_filtered <- lung.data[rownames(lung.data) != "",]
+
+View(lung_filtered)
+View(as.data.frame(lung_filtered))
+
+#CREATE THE SEURAT OBJECT WITH THE GENE NAMES AND MINIMUM OF 3 CELLS AND 200 GENES:
+lung<- CreateSeuratObject(counts = lung_filtered, project = "lung", min.cells = 3, min.features = 200)
+
+dim(lung_data)
+lung<-lung_data
+
+#save para o diogo:
+saveRDS(lung_data,file="C:/Users/ritas/Desktop/single_cell_Rita/lung_data.RDS")
+
+View(lung)
+head(rownames(lung),20)
+View(lung@assays$RNA@counts@Dimnames)
+
+############################################################################
+#to join the cells automatic annotation to the data:
+signature_matrix<-lung@assays[["RNA"]]@counts
+write.table(signature_matrix, file="signature_matrix.txt", row.names=TRUE, col.names=TRUE,sep = "\t",quote = FALSE)
+df = read.table("C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/signature_matrix.txt")
+#23898 genes with gene names
+############################################################################
+
+```
+
+
+#DETERMINE THE PERCENTAGE OF MITOCONDRIAL GENES ACCORDING TO THE PATTERN:
+```{r}
+#in the case of mouse genes
+lung[["percent.mt"]] <- PercentageFeatureSet(lung, pattern = "^mt-") 
+#OR
+#in the case of human genes
+lung[["percent.mt"]] <- PercentageFeatureSet(lung, pattern = "^MT-") 
+lung[["percent.rp"]] <- PercentageFeatureSet(lung, pattern = "^RP(L|S)") 
+
+
+VlnPlot(lung,features = c("nFeature_RNA","nCount_RNA","percent.mt","percent.rp"),ncol=4)
+
+```
+
+#OVERVIEW OF THE NFEATURE_RNA AND NCOUNT_RNA AND PERCENT.MT:
+```{r}
+View(lung@meta.data)
+FeatureScatter(lung,feature1 = "nCount_RNA",feature2 = "nFeature_RNA")+geom_smooth(method = "lm")
+
+#COMPARING PLOTS:
+plot1 <- FeatureScatter(lung, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(lung, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+plot2
+```
+
+#FILTERING:
+```{r}
+lung<-subset(lung,subset=nFeature_RNA>200 & nFeature_RNA<5000 & percent.mt<25 & nCount_RNA<40000 & percent.rp<65)
+#FIND DUBLETS:    [SOME AREAS THAT WERE MORE SEQUENCED, IN DUPLICATES]
+lung_sce <- as.SingleCellExperiment(lung)
+lung_sce <- cxds_bcds_hybrid(lung_sce, estNdbl=TRUE)#Function to find doublets/multiples in UMI
+lung<- AddMetaData(
+  object = lung,
+  metadata = lung_sce$hybrid_call,
+  col.name = "doublet"
+)
+
+table(lung_sce$hybrid_call)
+lung<- subset(lung, subset = doublet == FALSE)
+
+View(lung_sce)
+
+#FALSE:30148 
+#TRUE:1163   DOUBLETS
+```
+
+#3.Normalize data
+```{r}
+#1º:SEE THE MEANS AND VARIANCE OF THE DATA
+lung<-lung_data
+means <- sparseMatrixStats::rowMeans2(lung@assays$RNA@layers$counts)
+variance <- sparseMatrixStats::rowVars(lung@assays$RNA@layers$counts)
+plot(means, variance)
+```
+
+#2-A.TRY TO NORMALIZE THE DATA WITH LOG NORMALIZE:
+```{r}
+lung.norm<- NormalizeData(lung, normalization.method = "LogNormalize",scale.factor = 10000)
+
+means <- sparseMatrixStats::rowMeans2(as.matrix(lung.norm@assays$RNA@layers$data))
+variance <- sparseMatrixStats::rowVars(lung.norm@assays$RNA@layers$data)
+plot(means, variance)
+
+```
+
+#2-B.TRY TO NORMALIZE THE DATA WITH SCTransform:
+#NOTE:THE SCTRANSFORM TOOK A LONG TIME AND LEAD THE PC DOWN, SO I OPTED TO GO WITH THE CLASSIC NORMALIZATION:
+```{r}
+lung_sctranform <- SCTransform(lung,verbose=FALSE)
+
+means_sctranform<- sparseMatrixStats::rowMeans2(lung_sctranform@assays$SCT@data)
+variance_sctranform<- sparseMatrixStats::rowVars(lung_sctranform@assays$SCT@data)
+plot(means_sctranform, variance_sctranform)
+
+```
+
+
+#3.SCALING (optional)------------------------------
+```{r}
+hist(sparseMatrixStats::colSums2(lung.norm@assays$RNA@layers$data), main = "Counts per Cell")
+```
+
+#4.IDENTIFY HIGHLY VARIABLE FEATURES (GENES)---------------------------------------
+```{r}
+nsclc <- FindVariableFeatures(lung.norm)
+
+top10 <- head(VariableFeatures(nsclc), 10)
+
+plot1 <- VariableFeaturePlot(nsclc)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot1 + plot2
+plot2
+plot1
+
+```
+#Identify the 10 most highly variable genes:
+```{r}
+top10<-head(VariableFeatures(nsclc),10)
+top100<-head(VariableFeatures(nsclc),100)
+print(top10)
+print(top100)
+```
+
+#Plot variable features with and without labels:
+```{r}
+plot1<-VariableFeaturePlot(nsclc)
+LabelPoints(plot=plot1,points = top10,repel = TRUE)#REPEL=TRUE, SHOWS THET POINTS WELL DISTINGUISH BETWEEN EACH OTHER.
+```
+##5.SCALING
+REMOVE THE DESVIATIONS THAT LEAD TO THE CLUSTER OF THE CELLS, CAUSED BY THE DIFFERENCES ON CELL CYCLE OF THIS CELLS (BIOLOGICAL PROBLEM) OR THE BATCH EFFECT (TECNIQUAL PROBLEM); AND NOT BY THE BIOLOGICAL EFFECT.
+
+```{r}
+all.genes<-rownames(nsclc)
+nsclc.scaled<-ScaleData(nsclc,features = all.genes)
+str(nsclc.scaled)
+#notes:
+#normalized counts is stored in the data slot
+#scaling data stored in scale.data
+```
+#B.DOWNSTREAM ANALYSIS
+#6.Perform Linear dimensionality reduction------------------------------------------------------------------------------
+```{r}
+#6-A:TO PCA dimensionality reduction
+ElbowPlot(lung)
+lung<-RunPCA(nsclc.scaled,features = VariableFeatures(object = nsclc.scaled))
+print(lung[["pca"]],dims=1:5,nfeatures=5)
+
+VizDimLoadings(lung, dims = 1:2, reduction = "pca")
+
+DimPlot(lung, reduction = "pca") + NoLegend()
+
+FeaturePlot(lung,reduction = "pca",dims = c(1,2),features="percent.rp")
+
+DimHeatmap(lung,dims=1,cells=500,balanced = TRUE)
+DimHeatmap(lung,dims=1:10,cells=500,balanced = TRUE,nfeatures=50)
+DimHeatmap(lung,dims=1:15,cells=500,balanced = TRUE)
+
+```
+```{r}
+#6-B:FindNeighbors
+#PARAMETERS:
+#k.param: defines k for the k-nearest neighbor algorithm (depends- not a right number of k)
+#reduction: Reduction to use as input for building the (S)NN
+ElbowPlot(lung)
+
+lung <- FindNeighbors(lung, dims = 1:20)
+
+```
+
+```{r}
+#6-C:FindClusters
+#PARAMETERS:
+#RESOLUTION: Value of the resolution parameter, use a value above (below) 1.0 if you want to obtain a larger (smaller) number of communities.
+#ex: resolution=0.5- 24 communities; resolution=0.8- 7communities
+lung <- FindClusters(lung,resolution = seq(0.2, 0.7, 0.1))
+#21 clusters
+
+dim(lung)
+
+# Look at cluster IDs of the first 5 cells
+head(Idents(lung), 5)#obtain 34 levels
+```
+
+```{r}
+#6-D:Plot the clusters:
+p <- ggplot(data=as.data.table(lung@meta.data)[,.N,by="seurat_clusters"], mapping = aes(x=seurat_clusters, y=N, fill=seurat_clusters)) +
+  geom_bar(stat="identity") +
+  labs(x="Cluster Number", y="Number of Cells in that Cluster") +
+  theme_classic()
+print(p)
+```
+
+#UMAP VISUALIZATION:
+```{r}
+lung <- RunUMAP(lung, dims = 1:20)
+
+
+#PLOT DIM:
+#pt.size: Adjust point size for plotting
+#shuffle: Whether to randomly shuffle the order of points. This can be useful for crowded plots if points of interest are being buried. (default is FALSE)
+DimPlot(lung, reduction = "umap", label = TRUE,group.by = c("RNA_snn_res.0.2","RNA_snn_res.0.3","RNA_snn_res.0.4","RNA_snn_res.0.5","RNA_snn_res.0.6","RNA_snn_res.0.7"), label.box = FALSE)  & NoLegend() & NoAxes()
+
+DimPlot(lung, reduction = "umap")
+DimPlot(lung, reduction = "umap", pt.size = NULL, shuffle = TRUE) + coord_fixed()
+
+Idents(object = lung) <-lung@meta.data$RNA_snn_res.0.6
+
+FeaturePlot(lung, features = c("nFeature_RNA", "nCount_RNA", "percent.mt", "percent.rp"), order = TRUE) & NoLegend() & NoAxes()
+```
+
+#new_step:
+```{r}
+FindClusters(object = lung)
+#AUTOMATIC ANNOTATION WITH BlueprintEncodeData()
+library(SingleR)
+
+# predict cell types based on the reference
+lung_counts<-GetAssayData(lung, slot="counts")
+
+pred <- SingleR(test=lung_counts, ref=ref, labels=ref$label.main)
+
+lung$singleR.labels<-pred$labels[match(rownames(lung@meta.data),rownames(pred))]
+DimPlot(lung,reduction = "umap",group.by = "singleR.labels")
+
+table(pred$labels)
+lung$singleR_annot = pred$labels
+lung@assays$RNA@counts@Dimnames[[2]]=lung$singleR_annot
+View(lung)
+
+#Annotation diagnosis:
+pred
+pred$scores
+
+plotScoreHeatmap(pred)
+plotDeltaDistribution(pred)
+#get reference data
+ref<-celldex::HumanPrimaryCellAtlasData()
+x<-as.data.frame(colData(ref))
+
+#run singleR(default mode)
+lung_counts<-GetAssayData(lung, slot="counts")
+
+BiocManager::install("SingleR")
+library(SingleR)
+pred<-SingleR(test=lung_counts,ref=ref,labels = ref$label.main)
+
+lung$singleR.labels<-pred$labels[match(rownames(lung@meta.data),rownames(pred))]
+DimPlot(lung,reduction = "umap",group.by = "singleR.labels")
+
+#Annotation diagnosis:
+pred
+pred$scores
+
+plotScoreHeatmap(pred)
+plotDeltaDistribution(pred)
+
+#Comparing unsupervised clustering
+tab<-table(Assigned=pred$labels,Clusters=lung$seurat_clusters)
+library(pheatmap)
+pheatmap(log10(tab+10),color=colorRampPalette(c("white","blue"))(10))
+```
+
+
+
+
+#7-Finding differentially expressed features (cluster biomarkers)
+```{r}
+# find all markers of cluster 2
+cluster2.markers <- FindMarkers(lung, ident.1 = 2)
+head(cluster2.markers, n = 5)
+
+cluster5.markers <- FindMarkers(lung, ident.1 = 5, ident.2 = c(0, 3))
+cluster5.markers
+
+# find markers for every cluster compared to all remaining cells, report only the positive
+# ones
+lung.markers <- FindAllMarkers(lung)
+
+#SAVE THE SEURAT OBJECT:
+saveRDS(lung, file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/lung.RDS")
+
+lung<-readRDS(file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/lung.RDS")
+View(lung)
+
+library(Seurat)
+lung_combined.markers <- FindAllMarkers(lung, only.pos = FALSE,min.pct=0.1)
+View(lung_combined.markers)
+
+write.table(lung_combined.markers,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/AllMarkerslung.txt",quote = FALSE,row.names = FALSE,col.names = TRUE,sep = "\t")
+
+#READ THE FILE WITH ALL MARKERS DIFFERENTIAL EXPRESSED:
+k<-read.table(file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/AllMarkerslung.txt",header = TRUE)
+View(k)
+
+library(dplyr)
+#OBTAIN ONLY THE DIFFERENTIAL EXPRESSED GENES:
+b<-k %>% 
+  group_by(cluster) %>% dplyr::filter(p_val_adj<0.05)
+View(b_0)  
+
+#automatic function azimuth:
+devtools::install_github("satijalab/seurat", "seurat5")
+devtools::install_github("satijalab/seurat-data", "seurat5")
+devtools::install_github("satijalab/azimuth", "seurat5")
+library(seurat5)
+library(Seurat)
+library(Azimuth)
+library(SeuratData)
+library(patchwork)
+
+lung_annotation <- RunAzimuth(lung, reference ="Lung v2 (HLCA)")
+
+#OBTAIN THE LIST OF DIFFERESNTIAL EXPRESSED GENES PER CLUSTER:
+#A.CLUSTER 0:
+b_0<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="0")
+
+lung_cluster0_combined.markers<-as.data.frame(b_0)
+lung_cluster0_combined.markers$diff_pct<-(lung_cluster0_combined.markers$pct.1-lung_cluster0_combined.markers$pct.2)
+PLOT_CLUSTER_0<-FeaturePlot(lung,features = c("MCEMP1","UPP1", "HLA-DQA1", "C5AR1", "HLA-DMA", "AIF1", "MRC1", "CCL18"))
+
+genes_cluster0 <- b_0$gene
+View(lung_cluster0_combined.markers)
+
+write.table(genes_cluster0,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster0.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 1:
+b_1<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="1")
+View(b_1)
+
+lung_cluster1_combined.markers<-as.data.frame(b_1)
+genes_cluster1 <- b_1$gene
+View(genes_cluster1)
+
+write.table(genes_cluster1,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster1.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 2:
+b_2<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="2")
+View(b_2)
+
+lung_cluster2_combined.markers<-as.data.frame(b_2)
+genes_cluster2 <- b_2$gene
+View(genes_cluster2)
+
+write.table(genes_cluster2,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster2.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 3:
+b_3<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="3")
+View(b_3)
+
+lung_cluster3_combined.markers<-as.data.frame(b_3)
+genes_cluster3 <- b_3$gene
+View(genes_cluster3)
+
+write.table(genes_cluster3,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster3.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 4:
+b_4<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="4")
+View(b_4)
+
+lung_cluster4_combined.markers<-as.data.frame(b_4)
+genes_cluster4 <- b_4$gene
+View(genes_cluster4)
+
+write.table(genes_cluster4,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster4.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 5:
+b_5<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="5")
+View(b_5)
+
+lung_cluster5_combined.markers<-as.data.frame(b_5)
+genes_cluster5 <- b_5$gene
+View(genes_cluster5)
+
+write.table(genes_cluster5,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster5.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 6:
+b_6<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="6")
+View(b_6)
+
+lung_cluster6_combined.markers<-as.data.frame(b_6)
+genes_cluster6 <- b_6$gene
+View(genes_cluster6)
+
+write.table(genes_cluster6,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster6.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 7:
+b_7<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="7")
+View(b_7)
+
+lung_cluster7_combined.markers<-as.data.frame(b_7)
+genes_cluster7 <- b_7$gene
+View(genes_cluster7)
+
+write.table(genes_cluster7,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster7.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 8:
+b_8<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="8")
+View(b_8)
+
+lung_cluster8_combined.markers<-as.data.frame(b_8)
+genes_cluster8 <- b_8$gene
+View(genes_cluster8)
+
+write.table(genes_cluster8,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster8.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 9:
+b_9<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="9")
+View(b_9)
+
+lung_cluster9_combined.markers<-as.data.frame(b_9)
+genes_cluster9 <- b_9$gene
+View(genes_cluster9)
+
+write.table(genes_cluster9,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster9.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 10:
+b_10<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="10")
+View(b_10)
+
+lung_cluster10_combined.markers<-as.data.frame(b_10)
+genes_cluster10 <- b_10$gene
+View(genes_cluster10)
+
+write.table(genes_cluster10,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster10.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 11:
+b_11<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="11")
+View(b_11)
+
+lung_cluster11_combined.markers<-as.data.frame(b_11)
+genes_cluster11 <- b_11$gene
+View(genes_cluster11)
+
+write.table(genes_cluster11,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster11.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 12:
+b_12<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="12")
+View(b_12)
+
+lung_cluster12_combined.markers<-as.data.frame(b_12)
+genes_cluster12 <- b_12$gene
+View(genes_cluster12)
+
+write.table(genes_cluster12,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster12.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 13:
+b_13<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="13")
+View(b_13)
+
+lung_cluster13_combined.markers<-as.data.frame(b_13)
+genes_cluster13 <- b_13$gene
+View(genes_cluster13)
+
+write.table(genes_cluster13,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster13.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 14:
+b_14<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="14")
+View(b_14)
+
+lung_cluster14_combined.markers<-as.data.frame(b_14)
+genes_cluster14 <- b_14$gene
+View(genes_cluster14)
+
+write.table(genes_cluster14,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster14.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 15:
+b_15<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="15")
+View(b_15)
+
+lung_cluster15_combined.markers<-as.data.frame(b_15)
+genes_cluster15 <- b_15$gene
+View(genes_cluster15)
+
+write.table(genes_cluster15,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster15.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 16:
+b_16<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="16")
+View(b_16)
+
+lung_cluster16_combined.markers<-as.data.frame(b_16)
+genes_cluster16 <- b_16$gene
+View(genes_cluster16)
+
+write.table(genes_cluster16,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster16.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 17:
+b_17<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="17")
+View(b_17)
+
+lung_cluster17_combined.markers<-as.data.frame(b_17)
+genes_cluster17 <- b_17$gene
+View(genes_cluster17)
+
+write.table(genes_cluster17,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster17.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 18:
+b_18<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="18")
+View(b_18)
+
+lung_cluster18_combined.markers<-as.data.frame(b_18)
+genes_cluster18 <- b_18$gene
+View(genes_cluster18)
+
+write.table(genes_cluster18,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster18.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 19:
+b_19<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="19")
+View(b_19)
+
+lung_cluster19_combined.markers<-as.data.frame(b_19)
+genes_cluster19 <- b_19$gene
+View(genes_cluster19)
+
+write.table(genes_cluster19,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster19.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 20:
+b_20<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="20")
+View(b_20)
+
+lung_cluster20_combined.markers<-as.data.frame(b_20)
+genes_cluster20 <- b_20$gene
+View(genes_cluster20)
+
+write.table(genes_cluster20,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster20.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 21:
+b_21<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="21")
+View(b_21)
+
+lung_cluster21_combined.markers<-as.data.frame(b_21)
+genes_cluster21 <- b_21$gene
+View(genes_cluster21)
+
+write.table(genes_cluster21,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster21.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 22:
+b_22<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="22")
+View(b_22)
+
+lung_cluster22_combined.markers<-as.data.frame(b_22)
+genes_cluster22 <- b_22$gene
+View(genes_cluster22)
+
+write.table(genes_cluster22,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster22.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 23:
+b_23<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="23")
+View(b_23)
+
+lung_cluster23_combined.markers<-as.data.frame(b_23)
+genes_cluster23 <- b_23$gene
+View(genes_cluster23)
+
+write.table(genes_cluster23,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster23.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 24:
+b_24<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="24")
+View(b_24)
+
+lung_cluster24_combined.markers<-as.data.frame(b_24)
+genes_cluster24 <- b_24$gene
+View(genes_cluster24)
+
+write.table(genes_cluster24,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster24.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 25:
+b_25<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="25")
+View(b_25)
+
+lung_cluster25_combined.markers<-as.data.frame(b_25)
+genes_cluster25 <- b_25$gene
+View(genes_cluster25)
+
+write.table(genes_cluster25,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster25.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 26:
+b_26<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="26")
+View(b_26)
+
+lung_cluster26_combined.markers<-as.data.frame(b_26)
+genes_cluster26 <- b_26$gene
+View(genes_cluster26)
+
+write.table(genes_cluster26,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster26.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 27:
+b_27<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="27")
+View(b_27)
+
+lung_cluster27_combined.markers<-as.data.frame(b_27)
+genes_cluster27 <- b_27$gene
+View(genes_cluster27)
+
+write.table(genes_cluster27,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster27.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 28:
+b_28<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="28")
+View(b_28)
+
+lung_cluster28_combined.markers<-as.data.frame(b_28)
+genes_cluster28 <- b_28$gene
+View(genes_cluster28)
+
+write.table(genes_cluster28,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster28.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 29:
+b_29<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="29")
+View(b_29)
+
+lung_cluster29_combined.markers<-as.data.frame(b_29)
+genes_cluster29 <- b_29$gene
+View(genes_cluster29)
+
+write.table(genes_cluster29,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster29.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 30:
+b_30<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="30")
+View(b_30)
+
+lung_cluster30_combined.markers<-as.data.frame(b_30)
+genes_cluster30 <- b_30$gene
+View(genes_cluster30)
+
+write.table(genes_cluster30,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster30.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 31:
+b_31<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="31")
+View(b_31)
+
+lung_cluster31_combined.markers<-as.data.frame(b_31)
+genes_cluster31 <- b_31$gene
+View(genes_cluster31)
+
+write.table(genes_cluster31,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster31.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 32:
+b_32<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="32")
+View(b_32)
+
+lung_cluster32_combined.markers<-as.data.frame(b_32)
+genes_cluster32 <- b_32$gene
+View(genes_cluster32)
+
+write.table(genes_cluster32,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster32.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#CLUSTER 33:
+b_33<-b %>% 
+  group_by(cluster) %>% dplyr::filter(cluster=="33")
+View(b_33)
+
+lung_cluster33_combined.markers<-as.data.frame(b_33)
+genes_cluster33 <- b_33$gene
+View(genes_cluster33)
+
+write.table(genes_cluster33,file="C:/Users/ritas/Desktop/TESE_IMM/SC_LUNG/SC_LUNG/E-MTAB-6653/single_cell_data_E_MTAB-6653/MARKERS_PER_CLUSTER/genes_cluster33.txt",row.names = FALSE,col.names = FALSE,sep = ",")
+
+#unique genes:
+unique_in_list0<-setdiff(genes_cluster0,c(genes_cluster1,genes_cluster2,genes_cluster3,genes_cluster4,genes_cluster))
+
+```
+
+```{r}
+library(Seurat)
+View(lung)
+FeaturePlot(object = lung, features= c("CD68","GZMA","CXCR4"))
+
+```
+
+
+#8-CELL ANOTATION-------------------------------------------------------------------------------------------------
+
+#1º convert the genes from the ensembl nomenclature to the gene symbol nomenclature:
+```{r}
+lung.norm@assays$RNA_Seq@counts
+
+library(biomaRt)
+
+# Connect to the Ensembl database
+ensembl <- useMart("ensembl")
+
+# Select the appropriate dataset (e.g., human genes)
+ensembl <- useDataset("hsapiens_gene_ensembl",mart = ensembl)
+
+# Convert Ensembl Gene IDs to gene names
+ensembl_ids <- x@rowRanges@partitioning@NAMES  # Example Ensembl Gene IDs
+gene_ensemble<-rownames(as.SingleCellExperiment(lung.norm))
+gene_names <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                    filters = "ensembl_gene_id",
+                    values = gene_ensemble,
+                    mart = ensembl)
+
+# Print the gene names
+print(gene_names)
+
+#########################
+#EMPTY , ATTRIBUTE AS NA, AND IGNORE/REMOVE FROM THAT TABLE THE NA'S
+gene_names[gene_names==""]<-NA
+gene_names <- na.omit(gene_names)
+View(gene_names)
+
+your_single_cell_data_with_names = merge(as.SingleCellExperiment(lung.norm),gene_names,
+                                         by.x = "ensembl_gene_id",
+                                         by.y = "ensembl_gene_id",
+                                         all.x = TRUE)
+
+merged_df <- merge(as.SingleCellExperiment(lung.norm), gene_names)
+
+rownames(lung.norm)
+View(as.SingleCellExperiment(lung.norm))
+  
+merged_df <- merge(as.SingleCellExperiment(lung.norm),gene_names,by.x = "rowname", by.y = "ensembl_gene_id", all.x = TRUE)
+
+
+#NEXT STEP SELECT THE OBJECT WITH THOSE ENSEMBLE GENES AND SUBSTITUTE WITH THE GENE NAMES.
+```
+
+
+#OPTION-A:Method 2-AUTOMATIC ASSIGMENT ANOTATIONS
+```{r}
+library(celldex)
+ref <- BlueprintEncodeData()
+ref
+View(ref)
+
+library(SingleR)
+
+# predict cell types based on the reference
+pred <- SingleR(test=as.SingleCellExperiment(lung), ref=ref, labels=ref$label.main)
+table(pred$labels)
+lung$singleR_annot = pred$labels
+lung@assays$RNA@counts@Dimnames[[2]]=lung$singleR_annot
+View(lung)
+
+signature_matrix<-lung@assays$RNA@counts
+write.csv(signature_matrix, "signature_matrix.csv")
+
+marker_genes <-FindMarkers(lung, ident.1 = 2, min.pct = 0.25)
+
+#COMPARE THE 2 TYPES OF CELL ANNOTATION:
+#A-MANUAL ASSIGMENT
+MANUAL_CELL_ANNOTATION<-DimPlot(lung, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+#B-REFERENCE BASED ASSIGNMENT
+REFERENCE_CELL_ANNOTATION<-DimPlot(lung, reduction = "umap", label = TRUE, group.by="singleR_annot",pt.size = 0.5) + NoLegend()
+MANUAL_CELL_ANNOTATION+REFERENCE_CELL_ANNOTATION
+
+```
+
+######################################################################################################
+#OPTION-B:Method 1-Manual assignment: Using Marker Genes
+```{r}
+cluster1.markers <- FindMarkers(lung, ident.1 = 2, min.pct = 0.25)
+head(cluster1.markers, n = 100)
+```
+#Compare one again the differentially expressed genes for cluster 5, comparativamente ao cluster 0 e 3.
+```{r}
+cluster5.markers <- FindMarkers(lung, ident.1 = 5, ident.2 = c(0, 3), min.pct = 0.25)
+head(cluster5.markers, n = 5)
+```
+
