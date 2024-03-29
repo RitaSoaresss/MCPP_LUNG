@@ -128,7 +128,7 @@ ft <- cbind(genes_sign_f, pValue_f,p_value_adjust,cor_value)
 ft<-as.data.frame(ft)
 
 #Subset that table to only the gene names with associations with a p_value_adjust<1:
-ft_<-ft[ft$p_value_adjust<1,]
+ft_<-ft[ft$p_value_adjust<0.05,]
 View(ft_)
 
 #Obtain the list of genes, to plot with co-oncoplot function, the correlated mutations on those genes comparing in the progressive samples vs the non-progressive samples:
