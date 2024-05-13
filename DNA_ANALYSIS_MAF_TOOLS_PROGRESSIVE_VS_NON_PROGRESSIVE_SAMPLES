@@ -1,14 +1,33 @@
-################################################################LOAD PROGRESSIVE SAMPLES###################################################################################################################################
+
 library(maftools)
 #PRIMARY PROGRESSIVE FINAL MAF-READ
 LC_primary_progressive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/PROGRESSIVE_DNA_PRIMARY/final_maf_progressive.maf.gz",verbose = TRUE,rmFlags = TRUE)
 
-################################################################LOAD NON-PROGRESSIVE SAMPLES###################################################################################################################################
-#PRIMARY NON-PROGRESSIVE FINAL MAF-READ
-LC_primary_non_progresive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/NON_PROGRESSIVE_DNA_PRIMARY/final_maf_non_progressive.maf.gz",verbose = TRUE,rmFlags = TRUE)
+View(LC_primary_progressive)
 
-################################################################PROGRESSIVE VS NON-PROGRESSIVE SAMPLES###################################################################################################################################
-#oncoplot colors:
+#PRIMARY NON-PROGRESSIVE FINAL MAF-READ
+LC_primary_non_progressive<-maftools::read.maf("C:/Users/ritas/Desktop/TESE_IMM/DNA/DNA_PRIMARY/NON_PROGRESSIVE_DNA_PRIMARY/final_maf_primary.maf.gz",verbose = TRUE,rmFlags = TRUE)
+
+View(LC_primary_non_progressive)
+
+#summary plot-progressive
+plotmafSummary(maf = LC_primary_progressive, rmOutlier = TRUE, addStat = 'median', dashboard = TRUE, titvRaw = FALSE,showBarcodes = TRUE)
+
+#summary plot-non-progressive
+plotmafSummary(maf = LC_primary_non_progressive, rmOutlier = TRUE, addStat = 'median', dashboard = TRUE, titvRaw = FALSE,showBarcodes = TRUE)
+
+#SEE TYPES OF VARIANTS WITHIN THIS GENES IN BOTH COHORTS:
+E2F3_GENE<-lollipopPlot2(m1 = LC_primary_progressive, m2 = LC_primary_non_progressive, gene = "E2F3",AACol1 ='Protein_Change',AACol2 = 'Protein_Change',m1_name = "PROGRESSIVE", m2_name = "NON-PROGRESSIVE",m1_label = "all",m2_label = "all",verbose = TRUE,labPosSize = 1,labPosAngle = 45,domainLabelSize = 1.5) 
+
+CCND1_GENE<-lollipopPlot2(m1 = LC_primary_progressive, m2 = LC_primary_non_progressive, gene = "CCND1",AACol1 ='Protein_Change',AACol2 = 'Protein_Change',m1_name = "PROGRESSIVE", m2_name = "NON-PROGRESSIVE",m1_label = "all",m2_label = "all",verbose = TRUE,labPosSize = 1,labPosAngle = 45,domainLabelSize = 1.5) 
+
+#CALCULATE O LOG DO TMB:
+#OF PROGRESSIVE SAMPLES:
+tmb(LC_primary_progressive)
+
+#OF NON-PROGRESSIVE SAMPLES:
+tmb(LC_primary_non_progressive)
+
 vc_cols = RColorBrewer::brewer.pal(n = 8, name = 'Paired')
 names(vc_cols) = c(
   'Frame_Shift_Del',
@@ -20,9 +39,87 @@ names(vc_cols) = c(
   'Splice_Site',
   'In_Frame_Del'
 )
+pdf("output_oncoplot.pdf", width = 16, height = 20)
 
-#Plot the coOncoplot, comparing the correlated mutations from the gene list obtain from the pearson correlation analysis (final_genes_cor):
-coOncoplot(m1 = LC_primary_progressive,m2 = LC_primary_non_progresive,m1Name = "PROGRESSIVE",m2Name = "NON-PROGRESSIVE",genes = final_genes_cor,colors = vc_cols)
+#Top 100 mutated genes in each cohort:
+par(mar = c(5, 10, 4, 4))
+oncoplot(maf = LC_primary_progressive,showTumorSampleBarcodes=TRUE,fontSize = 0.9,gene_mar = 9,top = 100, colors = vc_cols,SampleNamefontSize = 1.6,annotationFontSize = 1.3,legend_height = 7,legendFontSize = 2)
 
-#Plot the mutations occuring in the only gene with a negative pearson correlation in the progressive vs non-progressive samples:
-lollipopPlot2(m1 = LC_primary_progressive, m2 = LC_primary_non_progresive, gene = "ZNF57",m1_name = "Progressive", m2_name = "Non-Progressive")
+oncoplot(maf = LC_primary_non_progressive,showTumorSampleBarcodes=TRUE,fontSize = 0.9,gene_mar = 9,top = 100, colors = vc_cols,SampleNamefontSize = 1.6,annotationFontSize = 1.3,legend_height = 7,legendFontSize = 2)
+dev.off()
+
+#oncogenic pathways more affected in each cohort:
+par(mar = c(10, 10, 8, 4))
+oncogenic_pathways_progressive<-oncoplot(maf = LC_primary_progressive, pathways = "sigpw", showTumorSampleBarcodes=TRUE,fontSize = 0.8,gene_mar = 9,top = 100,SampleNamefontSize = 1.5,annotationFontSize = 1.3)
+
+oncogenic_pathways_non_progressive<-oncoplot(maf = LC_primary_non_progressive, pathways = "sigpw", showTumorSampleBarcodes=TRUE,fontSize = 0.8,gene_mar = 9,top = 100, colors = vc_cols,SampleNamefontSize = 1.6,annotationFontSize = 1.3)
+
+#Biological processes of known drivers in each cohort:
+par(mar = c(10, 10, 8, 4))
+smgbp_primary_progressive<-oncoplot(maf = LC_primary_progressive, pathways = "smgbp",showTumorSampleBarcodes=TRUE,fontSize = 0.8,gene_mar = 9,top = 100, colors = vc_cols,SampleNamefontSize = 1.4,annotationFontSize = 1.3,legendFontSize = 0.5)
+
+smgbp_primary_non_progressive<-oncoplot(maf = LC_primary_non_progressive, pathways = "smgbp",topPathways = 3, showTumorSampleBarcodes=TRUE,fontSize = 0.8,gene_mar = 9,top = 100, colors = vc_cols,SampleNamefontSize = 1.4,annotationFontSize = 1.6,legend_height = 0.3)
+
+
+par(mar = c(5, 8, 4, 4))
+#collapsing the oncogenic pathways:
+sigpw_primary_progressive<-oncoplot(maf = LC_primary_progressive, pathways = "smgbp",collapsePathway = TRUE)
+
+sigpw_primary_non_progressive<-oncoplot(maf = LC_primary_non_progressive, pathways = "smgbp",collapsePathway = TRUE)
+
+######################################################mutational signatures analysis########################################################
+#1ºStep:obtain the adjacent bases surrounding the mutated base and form a mutation matrix
+library(maftools)
+LC_primary_progressive.tnm = trinucleotideMatrix(maf = LC_primary_progressive, add = TRUE, ref_genome = "BSgenome.Hsapiens.UCSC.hg38")
+View(LC_primary.tnm)
+LC_primary_non_progressive.tnm = trinucleotideMatrix(maf = LC_primary_non_progressive, add = TRUE, ref_genome = "BSgenome.Hsapiens.UCSC.hg38")
+
+
+#2ºSTEP:Draw elbow plot to visualize and decide optimal number of signatures
+library('NMF')
+LC_primary_progressive.sign = estimateSignatures(mat = LC_primary_progressive.tnm, nTry = 6)
+
+plotCophenetic(LC_primary_progressive.sign)
+#n=2
+
+LC_primary_non_progressive.sign = estimateSignatures(mat = LC_primary_non_progressive.tnm, nTry = 6)
+
+plotCophenetic(LC_primary_non_progressive.sign)
+#n=2
+
+#the optimal number of signatures of progressive cohort is 2.
+LC_primary_progressive.sig = extractSignatures(mat = LC_primary_progressive.tnm, n = 2)
+View(LC_primary_progressive.sig)
+
+#the optimal number of signatures of non-progressive cohort is 2.
+LC_primary_non_progressive.sig = extractSignatures(mat = LC_primary_non_progressive.tnm, n = 2)
+
+
+#4ºSTEP:Compare detected signatures to COSMIC Legacy or SBS signature database.
+#4ºSTEP-A:COSMIC Legacy-Compate against original 30 signatures 
+LC_primary_progressive.og30.cosm = compareSignatures(nmfRes = LC_primary_progressive.sig, sig_db = "legacy")
+#mainly important "defective DNA mismatch repair"
+
+LC_primary_non_progressive.og30.cosm = compareSignatures(nmfRes = LC_primary_non_progressive.sig, sig_db = "legacy")
+
+#4ºSTEP-B:SBS signature database-Compate against updated version3 60 signatures 
+LC_primary_progressive.v3.cosm = compareSignatures(nmfRes = LC_primary_progressive.sig, sig_db = "SBS")
+LC_non_progressive.v3.cosm = compareSignatures(nmfRes = LC_primary_non_progressive.sig, sig_db = "SBS")
+
+#5ºSTEP:comparison of similarities of detected signatures against validated signatures
+#legacy
+library('pheatmap')
+pheatmap::pheatmap(mat = LC_primary_progressive.og30.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Signatures From COSMIC Legacy Database - Primary Progressive Samples")
+maftools::plotSignatures(nmfRes = LC_primary_progressive.sig, title_size = 1.2, font_size = 1,sig_db = "legacy",show_title = TRUE)
+
+pheatmap::pheatmap(mat = LC_primary_non_progressive.og30.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Signatures From COSMIC Legacy Database - Primary Non-Progressive Samples")
+maftools::plotSignatures(nmfRes = LC_primary_non_progressive.sig, title_size = 1.2, font_size = 1,sig_db = "legacy",show_title = TRUE)
+
+#SBS
+pheatmap::pheatmap(mat = LC_primary_progressive.v3.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Signatures From COSMIC SBS Database - Primary Progressive Samples")
+maftools::plotSignatures(nmfRes = LC_primary_progressive.sig, title_size = 1.2,font_size = 1,sig_db = "SBS",show_barcodes = TRUE)
+
+pheatmap::pheatmap(mat = LC_non_progressive.v3.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Signatures From COSMIC SBS Database - Primary Non-Progressive Samples")
+maftools::plotSignatures(nmfRes = LC_primary_non_progressive.sig, title_size = 1.2,font_size = 1,sig_db = "SBS",show_barcodes = TRUE)
+
+
