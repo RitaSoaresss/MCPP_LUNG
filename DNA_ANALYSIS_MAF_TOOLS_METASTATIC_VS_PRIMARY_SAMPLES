@@ -58,12 +58,12 @@ combined_plot <- grid.arrange(smgbp_metastases,sigpw_metastases, ncol = 2)
 oncoplot(maf = LC_metastases, pathways = "smgbp", gene_mar = 8, fontSize = 0.3, topPathways = 10,showTumorSampleBarcodes = TRUE,colors = vc_cols,collapsePathway = TRUE)
 
 
-#do the tmb plot
+#tmb plot
 tmb(LC_metastases)
 
 library(OncodriveCLUSTL)
 
-#SEE ONCODRIVERS-CAN'T 9.2
+#SEE ONCODRIVERS
 laml.sig = oncodrive(maf = LC_metastases, AACol = NULL, minMut = 5, pvalMethod = 'zscore')
 LC_metastases.sig = oncodrive(maf = LC_metastases, AACol = 'Protein_Change', minMut = 5, pvalMethod = 'zscore',ignoreGenes = TRUE)
 LC_metastases.pfam = pfamDomains(maf = LC_metastases, AACol = 'Protein_Change', top = 10)
@@ -110,34 +110,3 @@ maftools::plotSignatures(nmfRes = LC_metastases.sig, title_size = 1.2, font_size
 
 pheatmap::pheatmap(mat = LC_metastases.v3.cosm$cosine_similarities, cluster_rows = FALSE, main = "Cosine Similarity Against Validated Signatures-SBS")
 maftools::plotSignatures(nmfRes = LC_metastases.sig, title_size = 1.2,font_size = 1,sig_db = "SBS",show_barcodes = TRUE)
-
-#5ºSTEP:Display mutational signatures exposure in each sample
-plotSignatures(nmfRes = LC_metastases.sig,
-               title_size = 0.8,
-               contributions = TRUE,
-               show_title = TRUE,sig_db = "legacy")
-
-plotSignatures(nmfRes = LC_metastases.sig,
-               title_size = 0.8,
-               contributions = TRUE,
-               show_title = TRUE,show_barcodes = TRUE)
-
-#6ºSTEP:Enrichment analysis
-LC_metastases.se = signatureEnrichment(maf = LC_metastases, 
-                              sig_res = LC_metastases.sig,minMut = 1, useCNV = FALSE, fn = NULL)
-
-#7ºSTEP:Genes mutated in samples with particular mutational signature
-LC_metastases.se$groupwise_comparision[1:2, ]
-
-
-
-#8ºSTEP:Plot the information in step 7:
-plotEnrichmentResults(enrich_res = LC_metastases.se,pVal = 1,ORthr = 0)
-
-
-################################################################LOAD PRIMARY SAMPLES###################################################################################################################################
-
-
-################################################################ANALYSIS METASTATIC VS PRIMARY ###################################################################################################################################
-
-
