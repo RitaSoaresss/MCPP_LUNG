@@ -27,11 +27,6 @@ View(SAMPLES_GROUPS_TREATMENT_RNA_)
 metadata<-SAMPLES_GROUPS_TREATMENT_RNA[complete.cases(SAMPLES_GROUPS_TREATMENT_RNA$TYPE),]
 View(metadata)#34 de 44 patients
 
-
-#C.Type of progressive
-#1-LESS PROGRESSIVE
-#2-HIGH PROGRESSIVE
-
 rownames(metadata)<-metadata$SAMPLES
 #put the samples in the same order in the count data as in the col data:
 BULK_DATA_rownames_<-BULK_DATA_rownames[,rownames(metadata)]
@@ -152,39 +147,6 @@ colnames(signficant_res_with_rownames)[1] <- "GeneName"
 
 write.xlsx(signficant_res_with_rownames, "C:/Users/ritas/Desktop/TESE_IMM/GSEA/primary_vs_metastase/GSEA_RES_DEGS.xlsx")
 
-
-#############################################################################
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-plotCounts(ddsHTSeq__LUNG_filtered, gene="LYZ",intgroup="TYPE")
-colData(ddsHTSeq__LUNG_filtered)
-#################WITH ENSEMBLE GENES##############################################################
-all_res<-as.data.frame(res)#18,584 genes DEGS and not DEGS
-View(all_res)
-write.table(all_res,"C:/Users/ritas/Desktop/TESE_IMM/GSEA/primary_vs_metastase/GSEA_RES.txt",quote = FALSE,sep=",")
-#order results by padj value (most significant to least)
-
-###########################################################################################
-#BOXPLOT:
-library(dplyr)
-top20_sigOE_genes <- signficant_res %>% 
-  arrange(padj) %>% 	#Arrange rows by padj values
-  pull(rownames(signficant_res)) %>% 		#Extract character vector of ordered genes
-  head(n=20)
-
-library(ggplot2)
-ggplot(ddsHTSeq__LUNG_filtered) +
-  geom_point(aes(x = rownames(ddsHTSeq__LUNG_filtered), y= ddsHTSeq__LUNG_filtered@assays@data@listData[["counts"]],color = ddsHTSeq__LUNG_filtered@colData@listData[["TYPE"]])) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Top 20 Significant DE Genes") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(plot.title = element_text(hjust = 0.5))
-
 #####################################################################################################33
 
 signficant_res <-as.data.frame(signficant_res[order(signficant_res$padj),])
@@ -199,20 +161,6 @@ View(high_expressed_genes_2_)
 low_expressed_genes_2_<-subset(signficant_res,log2FoldChange<0)
 low_expressed_genes_2_<-as.data.frame(low_expressed_genes_2_)
 View(low_expressed_genes_2_)
-list_significant_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(signficant_res))
-View(list_significant_2_STABLE_PROGRESSIVE)
-write.table(list_significant_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/list_significant_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote = FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
-low_expressed_genes_2_STABLE_PROGRESSIVE<-subset(signficant_res,log2FoldChange<0)
-View(low_expressed_genes_2_STABLE_PROGRESSIVE)
-low_expressed_genes_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(low_expressed_genes_2_STABLE_PROGRESSIVE))
-write.table(low_expressed_genes_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/low_expressed_genes_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote=FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
-high_expressed_genes_2_STABLE_PROGRESSIVE<-subset(signficant_res,log2FoldChange>0)
-high_expressed_genes_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(high_expressed_genes_2_STABLE_PROGRESSIVE))
-View(high_expressed_genes_2_STABLE_PROGRESSIVE)
-write.table(high_expressed_genes_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/high_expressed_genes_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote=FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
 
 ##############################################################################
 rlog<- rlog(ddsHTSeq__LUNG_filtered)
@@ -320,100 +268,4 @@ legend(y=0.8, x=-0.089, xpd=TRUE,
        lty= 1,             
        lwd = 5,           
        cex=0.5
-)
-
-#####################################################################################################
-#HEATMAP WITH ONLY THE DEGS:
-# Assuming you have already installed and loaded the necessary packages
-library(gplots)
-library(DESeq2)
-
-# Replace "dds" with your actual DESeqDataSet object
-# Assuming you have obtained DEGs using results(dds)
-# Adjust the log2FoldChange threshold and padj threshold as needed
-DEGs <- subset(results(ddsHTSeq__LUNG_filtered), padj < 0.05 & abs(log2FoldChange) > 1)
-DEGs
-# Extract the gene names of DEGs
-DEG_names <- rownames(DEGs)
-
-# Replace "vsd" with your actual data
-# Assuming "vsd" is a DESeqDataSet object
-heatmap_data <- assay(vsd)[DEG_names, ]
-
-par(mar = c(5.1, 4.1, 4.1, 2.1))  # Adjust margins as needed
-
-# Create the heatmap for DEGs
-heatmap.2(
-  heatmap_data[1:20,],
-  scale = "row",
-  trace = "none",
-  dendrogram = "none",
-  ColSideColors = c( "1"="darkolivegreen3", "2"="maroon")[
-    colData(vsd)[,"TYPE"]],
-  col = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
-  margins = c(8, 16)
-)
-
-# Add the legend
-legend(y = 0.8, x = -0.089, xpd = TRUE,
-  legend = c("METASTASE", "PRIMARY"), title = "PRIMARY vs METASTASE",
-  col = c("darkolivegreen3", "maroon"),
-  lty = 1,
-  lwd = 5,
-  cex = 0.5
-)
-
-
-###############################################################################################################3
-
-#GENE CLUSTERING WITHOUT HIERARQUICAL CLUSTERING:
-# Assuming vsd is your DESeqDataSet object
-anno <- as.data.frame(colData(vsd)[,"COL_TYPE"])
-topVarGenes <- head(order(rowVars(assay(vsd)), decreasing=TRUE), 20)
-
-# Perform K-means clustering
-k <- 2  # Set the number of clusters
-kmeans_result <- kmeans(assay(vsd)[topVarGenes, ], centers = k, nstart = 25)
-cluster_assignments <- kmeans_result$cluster
-
-# Subset cluster assignments for the topVarGenes
-topVarClusterAssignments <- cluster_assignments[topVarGenes]
-
-# Create a color vector for the clusters
-cluster_colors <- c("darkolivegreen3", "maroon")[topVarClusterAssignments]
-
-# Plot heatmap with K-means clustering
-par(mar=c(10,4,4,2))
-par(oma=c(1,15,1,15))
-margins = c(8, 8)
-lhei=c(10, 10)
-heatmap.2(assay(vsd)[topVarGenes, ], scale="row", 
-          trace="none", dendrogram="none",  # Remove column dendrogram
-          col = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
-          margins = c(8, 16))
-
-# Add legend
-legend(y=0.8, x=0.089, xpd=TRUE,     
-       legend=c("Cluster 1", "Cluster 2"), title = "Clusters",
-       col = c("darkolivegreen3", "maroon"), 
-       lty= 1,             
-       lwd = 5,           
-       cex=.5
-)
-
-##########################################################
-lhei=c(10, 10)
-heatmap.2( assay(vsd)[ topVarGenes, ], scale="row", 
-           trace="none", dendrogram="column",
-           col = colorRampPalette( rev(brewer.pal(9, "RdBu")) )(255),
-           ColSideColors = c( "1"="darkolivegreen3", "2"="maroon")[
-             colData(vsd)[,"TYPES"]],margins = c(8, 16))
-
-
-legend(y=0.8, x=-0.89, xpd=TRUE,     
-       legend=c("TYPE A","TYPE B"),title = "2º PATIENTS RESPONSE",
-       col = c("darkolivegreen3","maroon"), 
-       lty= 1,             
-       lwd = 5,           
-       cex=.5
 )
