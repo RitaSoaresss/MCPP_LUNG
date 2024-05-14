@@ -33,10 +33,6 @@ metadata<-metadata[metadata$TYPE=="PRIMARIO",]
 
 metadata#25 AMOSTRAS PRIMÁRIAS, EM QUE 1 WAS removed after the 9 LUNG, SO ACTUALLY THEY ARE 24 AMOSTRAS
 
-#C.Type of progressive
-#1-LESS PROGRESSIVE
-#2-HIGH PROGRESSIVE
-
 rownames(metadata)<-metadata$SAMPLES
 #put the samples in the same order in the count data as in the col data:
 BULK_DATA_rownames_<-BULK_DATA_rownames[,rownames(metadata)]
@@ -129,23 +125,12 @@ signficant_res<-subset(res,padj<0.05)#49 significant genes stable vs progressive
 summary(signficant_res)
 
 #WRITE THE RES_1_STABLE_PARTIAL_GENE_NAMES WITH ENSEMBLE NAMES.
-all_res<-as.data.frame(res)#18,194 genes DEGS and not DEGS
-View(all_res)
-write.table(all_res, "C:/Users/ritas/Desktop/TESE_IMM/GSEA/PRIMARY_WITH_RESPONSE_ONLY_CODING_GENES/GSEA_RES.tsv", quote = FALSE, sep = "\t", row.names = TRUE)
-#order results by padj value (most significant to least)
 library(openxlsx)
 # Adding row names as a column
 signficant_res_dataframe<-as.data.frame(signficant_res)
 signficant_res_with_rownames <- cbind(rownames(signficant_res_dataframe), signficant_res_dataframe)
 colnames(signficant_res_with_rownames)[1] <- "GeneName"
-
 write.xlsx(signficant_res_with_rownames, "C:/Users/ritas/Desktop/TESE_IMM/GSEA/PRIMARY_WITH_RESPONSE_ONLY_CODING_GENES/GSEA_RES_DEGS.xlsx")
-
-
-
-signficant_res <-as.data.frame(signficant_res[order(signficant_res$padj),])
-write.table(signficant_res,"C:/Users/ritas/Desktop/TESE_IMM/GSEA/PRIMARY_WITH_RESPONSE_ONLY_CODING_GENES/GSEA_RES_DEGS.txt",quote = FALSE,sep=",")
-View(signficant_res)
 
 high_expressed_genes_2_<-subset(signficant_res,log2FoldChange>0)
 high_expressed_genes_2_<-as.data.frame(high_expressed_genes_2_)
@@ -154,20 +139,6 @@ View(high_expressed_genes_2_)
 low_expressed_genes_2_<-subset(signficant_res,log2FoldChange<0)
 low_expressed_genes_2_<-as.data.frame(low_expressed_genes_2_)
 View(low_expressed_genes_2_)
-list_significant_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(signficant_res))
-View(list_significant_2_STABLE_PROGRESSIVE)
-write.table(list_significant_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/list_significant_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote = FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
-low_expressed_genes_2_STABLE_PROGRESSIVE<-subset(signficant_res,log2FoldChange<0)
-View(low_expressed_genes_2_STABLE_PROGRESSIVE)
-low_expressed_genes_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(low_expressed_genes_2_STABLE_PROGRESSIVE))
-write.table(low_expressed_genes_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/low_expressed_genes_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote=FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
-high_expressed_genes_2_STABLE_PROGRESSIVE<-subset(signficant_res,log2FoldChange>0)
-high_expressed_genes_2_STABLE_PROGRESSIVE<-as.data.frame(rownames(high_expressed_genes_2_STABLE_PROGRESSIVE))
-View(high_expressed_genes_2_STABLE_PROGRESSIVE)
-write.table(high_expressed_genes_2_STABLE_PROGRESSIVE,"C:/Users/ritas/Desktop/TESE_IMM/cibersort_my_lung_samples/DESEQ2/DESEQ_2/high_expressed_genes_2_STABLE_PROGRESSIVE_GENE_NAME.txt",quote=FALSE,sep=",",row.names=FALSE,col.names = FALSE)
-
 
 ##############################################################################
 rlog<- rlog(ddsHTSeq__LUNG_filtered)
@@ -264,103 +235,4 @@ heatmap.2( heatmap_data, scale="row",
 
 legend("left", inset = c(-0.00089, 0.8), legend=c("NON-PROGRESSIVE","PROGRESSIVE"),col = c("darkolivegreen3","maroon"), 
        lty=1, lwd=4, cex=0.6)
-
-
-#HEATMAP WITH ONLY THE DEGS:
-# Assuming you have already installed and loaded the necessary packages
-library(gplots)
-library(DESeq2)
-
-# Replace "dds" with your actual DESeqDataSet object
-# Assuming you have obtained DEGs using results(dds)
-# Adjust the log2FoldChange threshold and padj threshold as needed
-DEGs <- subset(results(ddsHTSeq__LUNG_filtered), padj < 0.05 & abs(log2FoldChange) > 1)
-DEGs
-View(DEG_names)
-# Extract the gene names of DEGs
-DEG_names <- rownames(DEGs)
-
-# Replace "vsd" with your actual data
-# Assuming "vsd" is a DESeqDataSet object
-heatmap_data <- assay(vsd)[DEG_names, ]
-
-par(mar = c(5.1, 4.1, 4.1, 2.1))# Adjust margins as needed
-
-# Create the heatmap for DEGs
-heatmap.2(
-  heatmap_data,
-  scale = "row",
-  trace = "none",
-  dendrogram = "none",
-  ColSideColors = c( "1"="darkolivegreen3", "2"="maroon")[
-    colData(vsd)[,"STAGE"]],
-  col = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
-  margins = c(8, 16)
-)
-par(mar = c(5.1, 4.1, 4.1, 2.1))  # Adjust margins as needed
-
-# Add the legend
-legend(
-  y = 0.8, x = -0.0089, xpd = TRUE,
-  legend = c("STAGE III", "STAGE IV"), title = "STAGE 4 VS 3",
-  col = c("darkolivegreen3", "maroon"),
-  lty = 1,
-  lwd = 5,
-  cex = 0.5
-)
-
-
-
-legend(y=0.8, x=-0.0089, xpd=TRUE,     
-       legend=c("STAGE III","STAGE IV"),title = "STAGE 4 VS 3",
-       col = c("darkolivegreen3","maroon"), 
-       lty= 1,             
-       lwd = 5,           
-       cex=.5
-)
-
-
-
-
-
-
-
-
-
-#GENE CLUSTERING WITHOUT HIERARQUICAL CLUSTERING:
-# Assuming vsd is your DESeqDataSet object
-anno <- as.data.frame(colData(vsd)[,"STAGE"])
-topVarGenes <- head(order(rowVars(assay(vsd)), decreasing=TRUE), 7)
-
-# Perform K-means clustering
-k <- 2  # Set the number of clusters
-kmeans_result <- kmeans(assay(vsd)[topVarGenes, ], centers = k, nstart = 25)
-cluster_assignments <- kmeans_result$cluster
-
-# Subset cluster assignments for the topVarGenes
-topVarClusterAssignments <- cluster_assignments[topVarGenes]
-
-# Create a color vector for the clusters
-cluster_colors <- c("darkolivegreen3", "maroon")[topVarClusterAssignments]
-
-# Plot heatmap with K-means clustering
-par(mar=c(10,4,4,2))
-par(oma=c(1,15,1,15))
-margins = c(8, 8)
-lhei=c(10, 10)
-library(gplots)
-heatmap.2(assay(vsd)[topVarGenes, ], scale="row", 
-          trace="none", dendrogram="none",  # Remove column dendrogram
-          col = colorRampPalette(rev(brewer.pal(7, "RdBu")))(200),
-          margins = c(8, 16))
-
-# Add legend
-legend(y=0.8, x=0.089, xpd=TRUE,     
-       legend=c("Cluster 1", "Cluster 2"), title = "Clusters",
-       col = c("darkolivegreen3", "maroon"), 
-       lty= 1,             
-       lwd = 5,           
-       cex=.5
-)
-
 
