@@ -7,9 +7,6 @@ library(ggplot2)
 data_lines <- read.table("C:/Users/ritas/Desktop/TESE_IMM/GSEA/PRIMARY_WITH_RESPONSE_ONLY_CODING_GENES/GSEA_RES.txt",sep = ",")
 View(data_lines)
 
-
-
-
 ##################################################################
 
 # we want the log2 fold change 
@@ -46,97 +43,12 @@ GO_TERMS_PRIMARY_RESPONSE<-as.data.frame(gse@result)
 library(openxlsx)
 write.xlsx(GO_TERMS_PRIMARY_RESPONSE, "C:/Users/ritas/Desktop/TESE_IMM/GSEA/PRIMARY_WITH_RESPONSE_ONLY_CODING_GENES/go_terms_primary_progressive_response.xlsx")
 
-#
-library(DOSE)
-barplot(gse, showCategory=15)
-edo <- enrichDGN(gene_list)
-edo2 <- gseNCG(gene_list, nPerm=10000)
-edox <- setReadable(gse, 'org.Hs.eg.db', 'ENTREZID')
-heatplot(gse, foldChange=gene_list,showCategory = 15)
-
-#A.EPITHELIAL PATHWAYS:
-epithelial_cell_differentiation <- subset(gse@result, rownames(gse@result) == "GO:0030855")
-View(epithelial_cell_differentiation)
-epithelial_cell_differentiation_genes<-epithelial_cell_differentiation$core_enrichment
-result_epithelial_cell_differentiation<- unlist(strsplit(epithelial_cell_differentiation_genes, "/"))
-View(result_epithelial_cell_differentiation)
-
-#B.epithelial structure maintenance
-epithelial_structure_maintenance<-subset(gse@result, rownames(gse@result) == "GO:0010669")
-View(epithelial_structure_maintenance)
-epithelial_structure_maintenance_genes<-epithelial_structure_maintenance$core_enrichment
-result_epithelial_structure_maintenance<- unlist(strsplit(epithelial_structure_maintenance_genes, "/"))
-View(result_epithelial_structure_maintenance)
-
-#C.epithelial cell development
-epithelial_cell_development<-subset(gse@result, rownames(gse@result) == "GO:0002064")
-View(epithelial_cell_development)
-epithelial_cell_development_genes<-epithelial_cell_development$core_enrichment
-result_epithelial_cell_development<- unlist(strsplit(epithelial_cell_development_genes, "/"))
-View(result_epithelial_cell_development)
-
-#D.epithelial cilium movement involved in extracellular fluid movement
-epithelial_cilium_movement<-subset(gse@result, rownames(gse@result) == "GO:0003351")
-View(epithelial_cilium_movement)
-epithelial_cilium_movement_genes<-epithelial_cilium_movement$core_enrichment
-result_epithelial_cilium_movement<- unlist(strsplit(epithelial_cilium_movement_genes, "/"))
-View(result_epithelial_cilium_movement)
-
-#SEE THE SHARED EXPRESSED GENES IN THE 4 EPITHELIAL PATHWAYS:
-# Find common genes
-common_genes <- Reduce(intersect, list(result_epithelial_cell_differentiation, result_epithelial_cell_development,result_epithelial_structure_maintenance))
-
-# Print the common genes
-str(common_genes)
-
-
-require(DOSE)
-#dotplot
-dotplot(gse, showCategory=15, font.size = 18,split=".sign") + facet_grid(.~.sign) + theme(text = element_text(size = 30)) + theme(plot.margin = margin(25, 40, 25, 25))
-
-# Specify the GO terms you want to display
-selected_terms <- c("GO:0030855","GO:0002064", "GO:0072076")
-
-# Extract the results for the selected GO terms
-selected_results <- subset(gse, gse@result %in% selected_terms)
-
-selected_results$sign <- factor(selected_results$sign)
-dotplot(selected_results) + facet_grid(.~sign)
-
-# Extract the results for the selected GO terms using enricher
-enrich_results <- enricher(gene_list, TERMID = selected_terms)
-
-# Create a dot plot for the selected GO terms
-dotplot(enrich_results, showCategory = 10, title = "Dotplot for Selected GO Terms")
-
-
 # Create a dot plot
 dotplot(selected_results, split = ".sign") + facet_grid(.~.sign)
-
-###################################################################
-cnetplot(gse) + ggtitle("Gene-Concept Network")#with log2fc
-
-####################################################################
-top_n_genes <- final_db[order(abs(final_db$log2FoldChange), decreasing = TRUE), ][1:50, ]
-filtered_genes <- final_db[which(final_db$padj < 0.05 & abs(final_db$log2FoldChange) > log2(2)),]
-selected_genes <- rownames(filtered_genes)
-selected_gse <- gse[gse@result$ID %in% selected_genes, ]
-heatplot(selected_gse,showCategory = 10) + ggtitle("Heatmap GO Terms 2º line patients")
-heatplot(gse, foldChange=gene_list,showCategory = 10,label_format = 20) + ggtitle("Heatmap for GO_ORA_90cutoff_PC")
-
-library(ComplexHeatmap)
-
-# Assuming selected_gse is a data.frame with genes in rows and samples in columns
-expression_matrix <- as.matrix(selected_gse[, -1])  # Assuming the first column is gene IDs
-
-# Create a heatmap using ComplexHeatmap
-Heatmap(expression_matrix, name = "Expression", show_row_names = FALSE,
-        cluster_rows = TRUE, cluster_columns = TRUE)
 
 #Enrichment Map:Enrichment map organizes enriched terms into a network with edges connecting overlapping gene sets. In this way, mutually overlapping gene sets are tend to cluster together, making it easy to identify functional modules.
 x2 <- pairwise_termsim(gse) 
 emapplot(x2, showCategory = 30) + theme(text = element_text(size = 30))
-
 
 #Category Netplot
 cnetplot(gse,showCategory = 10,categorySize="pvalue", foldChange=gene_list,)
@@ -145,16 +57,7 @@ cnetplot(gse,showCategory = 10,categorySize="pvalue", foldChange=gene_list,)
 #Grouped by gene set, density plots are generated by using the frequency of fold change values per gene within each set. Helpful to interpret up/down-regulated pathways.
 ridgeplot(gse) + labs(x = "enrichment distribution")
 
-#GSEA Plot#não entendo
-gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
-
-#PubMed trend of enriched terms
-terms <- gse$Description[1:10]
-pmcplot(terms, 2010:2023, proportion=FALSE)
-
-goplot(gse)
-
-#########################1ºGO TERMS:#################################
+#########################1ºKEGG PATHWAYS:#################################
 #toType in the bitr function has to be one of the available options from keyTypes(org.Dm.eg.db) and must map to one of ‘kegg’, ‘ncbi-geneid’, ‘ncib-proteinid’ or ‘uniprot’ because gseKEGG() only accepts one of these 4 options as it’s keytype parameter. In the case of org.Dm.eg.db, none of those 4 types are available, but ‘ENTREZID’ are the same as ncbi-geneid for org.Dm.eg.db so we use this for toType.
 # Convert gene IDs for gseKEGG function
 # We will lose some genes here because not all IDs will be converted
@@ -211,38 +114,3 @@ cnetplot(gsea_kegg, categorySize="pvalue", foldChange=kegg_gene_list,showCategor
 #Ridgeplot
 ridgeplot(gsea_kegg) + labs(x = "enrichment distribution")
 
-#GSEA PLOT:
-gseaplot(gsea_kegg, by = "all", title = gsea_kegg$Description[4], geneSetID = 4)
-
-#Pathview:
-library(pathview)
-
-#HERE
-# Produce the native KEGG plot (PNG) + significativo
-kegg_plot_pathway <- pathview(gene.data=kegg_gene_list, pathway.id="hsa05207", species = "hsa")
-
-# Produce a different plot (PDF) (not displayed here) + significativo
-kegg_plot_pathway_not_native<- pathview(gene.data=kegg_gene_list, pathway.id="hsa00860", species = "hsa", kegg.native = F)
-
-# Produce the native KEGG plot (PNG) + significativo
-kegg_plot_pathway <- pathview(gene.data=kegg_gene_list, pathway.id="hsa00140", species = "hsa")
-
-# Produce a different plot (PDF) (not displayed here) + significativo
-kegg_plot_pathway_not_native<- pathview(gene.data=kegg_gene_list, pathway.id="hsa00140", species = "hsa", kegg.native = F)
-
-#############Chemical carcinogenesis - DNA adducts##########
-# Produce the native KEGG plot (PNG) + significativo
-kegg_plot_pathway <- pathview(gene.data=kegg_gene_list, pathway.id="hsa05204", species = "hsa")
-
-# Produce a different plot (PDF) (not displayed here) + significativo
-kegg_plot_pathway_not_native<- pathview(gene.data=kegg_gene_list, pathway.id="hsa05204", species = "hsa", kegg.native = F)
-
-
-pheatmap(sampleDistMatrix,scale = "row",col = colorRampPalette(c("orange3", "white"))(50))
-
-
-lhei=c(10, 10)
-heatmap.2(assay(vsd)[topVarGenes, ], scale="row", 
-          trace="none", dendrogram="none",  # Remove column dendrogram
-          col = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
-          margins = c(8, 16))
