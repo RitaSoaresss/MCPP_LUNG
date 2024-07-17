@@ -18,7 +18,7 @@ The MULTIQC tool consists in providing a html report of all the samples fastqc f
 
 #### 3_STAR_align_RNA
 
-
+Aligns the clean fastq files to the reference genome GRCh38 (depends on the type of data), to output a sam format file, as well as other files, such as, "“ReadsPerGene.out.tab" used then in the differential gene expression with DESEQ2 and in the deconvolution tools (ESTIMATE, CIBERSORTx).
 
 ### A.2 DECONVOLUTION WORKFLOW:
 
