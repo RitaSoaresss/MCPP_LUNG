@@ -8,11 +8,11 @@
 
 Here's a list of the RNA pre-processing scripts and a brief description of them in order:
 
-* 1_FASTQC_RNA
+#### 1_FASTQC_RNA
 
-* 2_MULTIQC_RNA
+#### 2_MULTIQC_RNA
 
-* 3_STAR_align_RNA
+#### 3_STAR_align_RNA
 
 ### A.2 DECONVOLUTION WORKFLOW:
 
