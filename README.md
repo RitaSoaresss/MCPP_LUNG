@@ -10,9 +10,15 @@ Here's a list of the RNA pre-processing scripts and a brief description of them 
 
 #### 1_FASTQC_RNA
 
+The FastQ files provided from the whole sequencing, pass first through a quality control analysis using FASTQC tool
+
 #### 2_MULTIQC_RNA
 
+The MULTIQC tool consists in providing a html report of all the samples fastqc files into one.
+
 #### 3_STAR_align_RNA
+
+
 
 ### A.2 DECONVOLUTION WORKFLOW:
 
