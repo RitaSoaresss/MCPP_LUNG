@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=STAR_2.7.9a_2pass_pairend_end.trim
+#SBATCH --job-name=3_STAR_align_RNA
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
