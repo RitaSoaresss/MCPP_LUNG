@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=FASTQC_RNA_2
+#SBATCH --job-name=1_FASTQC_RNA
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
