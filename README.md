@@ -44,9 +44,16 @@ The DNA pre-processing is divided into 2 parts:
 
   #### 1_FASTP and 1_MULTIQC
 
+Fastp tool is performed in the DNA fastq files, for a quality control check, filtering the bad quality reads and trimming the sequence of the adaptors from Polymerase chain reaction (PCR) present in the raw files. Plus, the MULTIQC html report was also performed in the DNA samples
+
   #### 2_BWA_MEM
 
+Secondly, the trimmed reads were then aligned to the human reference genome GRCh38 (Genome Reference Consortium Human Build 38) using the BWA-MEM mapping algorithm (Burrows-Wheeler Aligner), normally used for a better performance for 70-100bp Illumina reads.
+
   #### 3_SAMTools
+
+Following the BWA-MEM mapping, the align reads in the SAM format files were converted into 
+BAM format files with SAMtools, that is a compressed binary representation of the SAM file, which reduces the workload and improves the efficiency of the processing steps.
 
   #### 4_FastqToSam
 
