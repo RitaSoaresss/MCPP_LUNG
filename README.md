@@ -42,9 +42,41 @@ The DNA pre-processing is divided into 2 parts:
 
   Here's a list of the DNA Variant Alignment scripts and a brief description of them in order:
 
+  #### 1_FASTP and 1_MULTIQC
+
+  #### 2_BWA_MEM
+
+  #### 3_SAMTools
+
+  #### 4_FastqToSam
+
+  #### 5_MergeBamAlinment
+
+  #### 6_MarkDuplicates
+
+  #### 7_SortSam
+
+  #### 8_BaseRecalibrator
+
+  #### 9_ApplyBQSR
+
 ### B.2 - Variant Calling
 
   ![image](https://github.com/user-attachments/assets/a3c5191b-b77b-43e9-b6c5-3c4c4347f479)
 
   Here's a list of the DNA Variant Calling scripts and a brief description of them in order:
+
+  #### 1_Mutect2
+
+  #### 2_GetPileupSummaries
+
+  #### 3_CalculateContamination
+
+  #### 4_LearnReadOrientationModel
+
+  #### 5_FilterMutectCalls
+
+  #### 6_SelectVariants
+
+  #### 7_Funcotator
 
