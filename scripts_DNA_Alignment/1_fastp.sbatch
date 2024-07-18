@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fastp_new_illumina
+#SBATCH --job-name=1_fastp
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
