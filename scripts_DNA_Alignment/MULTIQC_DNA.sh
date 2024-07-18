@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=MULTIQC_DNA
+#SBATCH --job-name=1_MULTIQC
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
