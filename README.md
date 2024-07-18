@@ -18,12 +18,19 @@ The MULTIQC tool consists in providing a html report of all the samples fastqc f
 
 #### 3_STAR_align_RNA
 
-Aligns the clean fastq files to the reference genome GRCh38 (depends on the type of data), to output a sam format file, as well as other files, such as, “ReadsPerGene.out.tab" used then in the differential gene expression with DESEQ2 and in the deconvolution tools (ESTIMATE, CIBERSORTx).
+Aligns the clean fastq files to the reference genome GRCh38 (depends on the type of data), to output a sam format file, as well as other files, such as, “ReadsPerGene.out.tab" used then in the differential gene expression with DESEQ2; ESTIMATE analysis ; and deconvolution analysis with CIBERSORTx.
 
 ### A.2 DECONVOLUTION WORKFLOW:
 
 ![image](https://github.com/user-attachments/assets/15ec7b08-3f66-441a-b5c6-d84b97505925)
 
+CIBERSORTx is a deconvolution web tool (https://cibersortx.stanford.edu/), that was performed with a single cell public dataset from the single cell atlas (https://www.ebi.ac.uk/gxa/sc/home). This dataset was used as reference purified gene expression profile of the different cell types, to origine a signature/barcode matrix. Single cell public dataset E-MTAB-6653 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6653) from three patients with untreated NSCLC as signature matrix.
+
+#### SC_LUNG_3-lung-carcinomas.Rmd
+
+The annotation of the single cell data was done by the Seurat package in R (https://satijalab.org/seurat/). The workflow of the annotation divides into 5 major steps: Quality control and subset of single cell data; Normalization of the data; Identification of highly variable features (feature selection) and Scaling of the data; Linear dimensional reduction and clustering; Cell annotation and diagnosis.
+
+#### CIBERSORTx
 
 ## B. DNA PRE-PROCESSING WORKFLOW:
 
