@@ -28,7 +28,7 @@ process_dir2="$path/samToBam"
 
  echo "SAM is $SAM"
  echo "samtools view -S -b $SAM > "$BASE.unsorted.bam""
- srun shifter samtools view -S -b $SAM > "$BASE.unsorted.bam"
+ srun /mnt/beegfs/apptainer/images/samtools_latest.sif samtools view -S -b $SAM > "$BASE.unsorted.bam"
 
  #echo "Done bam file"
 
