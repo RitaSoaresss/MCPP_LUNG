@@ -1,0 +1,70 @@
+#!/bin/bash
+#SBATCH --job-name=FASTQC_new_illumina_cut_adapt
+#SBATCH --time=20:00:00
+#SBATCH --ntasks=1
+#SBATCH --mem=240G
+#SBATCH --cpus-per-task=40
+#SBATCH --chdir=/mnt/nfs/lobo/IMM-NFS/cfranco/scratch
+
+#Define the path for all directories
+path="/mnt/nfs/lobo/SALMEIDA-NFS/lcosta/MCPP-Lung/RNASeq/fastq_RNA"
+
+# 1.Run trimgalore-0.6.7-cutadapt
+##Set the diretories 
+process_dir="$path/fastq_RNA"
+process_dir2="$path/fastq_trimming"
+
+# Loop through all R1 files ending with _R1_001.fastq.gz
+for R1_file in "$process_dir"/*_R1_001.fastq.gz; do
+    # Get the sample base name by removing _R1_001.fastq.gz
+    base_name=$(basename "$R1_file" _R1_001.fastq.gz)
+
+    # Define the corresponding R2 file with _R2_002.fastq.gz
+    R2_file="$process_dir/${base_name}_R2_001.fastq.gz"
+
+
+    echo "Start processing sample: $base_name"
+    echo "Trimming reads..."
+    echo "trim_galore --illumina --paired $R1_file $R2_file -o $process_dir2"
+    srun /mnt/beegfs/apptainer/images/trimgalore_trimgalore-0.6.7-cutadapt-4.2.sif trim_galore --illumina --paired $R1_file $R2_file -o $process_dir2
+
+done
+
+echo "All samples processed with trimgalore-cutadapt."
+
+# 2.Run Fastqc
+##Set directories
+process_dir2="$path/fastq_trimming"
+process_dir3="$path/FASTQC_NEW"
+
+echo "START PROCESSING FASTQC"
+
+# Loop over all files ending with R1_001_val_1.fq.gz
+for R1 in "$process_dir2"/*R1_001_val_1.fq.gz; do
+    # Derive the corresponding R2 file by replacing R1 with R2
+    R2="${R1/R1_001_val_1.fq.gz/R2_001_val_2.fq.gz}"
+
+    # Extract the sample name (before _R1_001_val_1.fq.gz)
+    sample_name=$(basename "$R1" _R1_001_val_1.fq.gz)
+
+    echo "Processing sample: $sample_name"
+    echo "Running FastQC for $sample_name..."
+
+    # Run FastQC using Singularity
+    srun /mnt/beegfs/apptainer/images/biocontainers-fastqc-v0.11.9_cv8.img fastqc $R1 $R2 -o $process_dir3
+done
+
+echo "All samples processed with FastQC."
+
+# 3. Run MULTIQC
+##Determine the directories
+process_dir3="$path/FASTQC_NEW"
+process_dir4="$path/MULTIQC"
+
+ echo "START PROCESSING MULTIQC"
+ srun /mnt/beegfs/apptainer/images/multiqc-1.20.sif multiqc $process_dir3 -o $process_dir4
+
+echo "All samples processed with MULTIQC."
+
+# Job statistics (like elapsed time and memory usage)
+sacct --format="JOBID,Start,End,Elapsed,CPUTime,AveDiskRead,AveDiskWrite,MaxRSS" -j $SLURM_JOB_ID
