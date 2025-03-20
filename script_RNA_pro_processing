@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=RNA_PRE_PROXESSING
+#SBATCH --job-name=RNA_PRE_PROCESSING
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
