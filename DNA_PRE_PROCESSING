@@ -1,0 +1,47 @@
+#!/bin/bash
+#SBATCH --job-name=DNA_PRE_PROCESSING
+#SBATCH --time=20:00:00
+#SBATCH --ntasks=1
+#SBATCH --mem=240G
+#SBATCH --cpus-per-task=40
+#SBATCH --chdir=/mnt/nfs/lobo/IMM-NFS/cfranco/scratch
+
+#Define the path for all directories
+path="/mnt/nfs/lobo/IMM-NFS/cfranco/MCPP-Lung/DNA/DNA_fastq"
+
+# 1.Run Fastqc
+##Set directories
+process_dir="$path/DNA_fastq"
+process_dir2="$path/DNA_FASTQC"
+
+echo "START PROCESSING FASTQC"
+
+# Loop over all files ending with _R2_001.fastq.gz
+for R1 in "$process_dir2"/*_R2_001.fastq.gz; do
+    # Derive the corresponding R2 file by replacing R1 with R2
+    R2="${R1/_R1_001.fastq.gz/_R2_001.fastq.gz}"
+
+    # Extract the sample name (before __R1_001.fastq.gz)
+    sample_name=$(basename "$R1" _R1_001.fastq.gz)
+
+    echo "Processing sample: $sample_name"
+    echo "Running FastQC for $sample_name..."
+
+    # Run FastQC using Singularity
+    srun /mnt/beegfs/apptainer/images/biocontainers-fastqc-v0.11.9_cv8.img fastqc $R1 $R2 -o $process_dir3
+done
+
+echo "All DNA samples processed with FastQC."
+
+# 3. Run MULTIQC
+##Determine the directories
+process_dir2="$path/DNA_FASTQC"
+process_dir3="$path/DNA_MULTIQC"
+
+ echo "START PROCESSING MULTIQC"
+ srun /mnt/beegfs/apptainer/images/multiqc-1.20.sif multiqc $process_dir2 -o $process_dir3
+
+echo "All DNA samples processed with MULTIQC."
+
+# Job statistics (like elapsed time and memory usage)
+sacct --format="JOBID,Start,End,Elapsed,CPUTime,AveDiskRead,AveDiskWrite,MaxRSS" -j $SLURM_JOB_ID
