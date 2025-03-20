@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=FASTQC_new_illumina_cut_adapt
+#SBATCH --job-name=RNA_PRE_PROXESSING
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=240G
