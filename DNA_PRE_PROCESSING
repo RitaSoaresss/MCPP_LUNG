@@ -17,7 +17,7 @@ process_dir2="$path/DNA_FASTQC"
 echo "START PROCESSING FASTQC"
 
 # Loop over all files ending with _R2_001.fastq.gz
-for R1 in "$process_dir2"/*_R2_001.fastq.gz; do
+for R1 in "$process_dir2"/*_R1_001.fastq.gz; do
     # Derive the corresponding R2 file by replacing R1 with R2
     R2="${R1/_R1_001.fastq.gz/_R2_001.fastq.gz}"
 
